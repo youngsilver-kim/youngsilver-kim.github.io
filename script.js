@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
   search.addEventListener('input', renderTodos);
   loadTodos();
 
-  // Calendar with edit/delete on events and highlighter selection
+  // Calendar with edit/delete and highlighter selection
   const calGrid = document.getElementById('calendarGrid');
   const monthYear = document.getElementById('monthYear');
   const prevBtn = document.getElementById('prevMonth');
@@ -100,7 +100,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let isHighlightMode = false;
   let dragStartCell = null;
 
-  // Load & save calendar events
   function loadCal() {
     return JSON.parse(localStorage.getItem(CAL_KEY) || '{}');
   }
@@ -108,7 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem(CAL_KEY, JSON.stringify(evs));
   }
 
-  // Render calendar grid
   function renderCal() {
     calGrid.innerHTML = '';
     const evs = loadCal();
@@ -120,41 +118,35 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     const firstDay = new Date(cy, cm, 1).getDay();
     const lastDate = new Date(cy, cm + 1, 0).getDate();
-    // Empty cells
     for (let i = 0; i < firstDay; i++) {
       const empty = document.createElement('div');
       empty.className = 'day-cell inactive';
       calGrid.appendChild(empty);
     }
-    // Date cells
     for (let d = 1; d <= lastDate; d++) {
       const cell = document.createElement('div');
       cell.className = 'day-cell';
       const key = `${cy}-${String(cm+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       cell.dataset.key = key;
       cell.innerHTML = `<div class="date">${d}</div><div class="events"></div>`;
-      // Render existing events
+      // Render events
       (evs[key]||[]).forEach((txt, idx) => {
         const ev = document.createElement('div');
         ev.className = 'event';
         ev.textContent = txt;
-        // Click to edit/delete
-        ev.addEventListener('click', (e) => {
+        ev.addEventListener('click', e => {
           e.stopPropagation();
           const newText = prompt('수정: 내용 입력 / 삭제는 공백 입력', ev.textContent);
           if (newText === null) return;
-          if (newText.trim() === '') {
-            evs[key].splice(idx, 1);
-          } else {
-            evs[key][idx] = newText;
-          }
-          if (evs[key].length === 0) delete evs[key];
+          if (newText.trim() === '') evs[key].splice(idx, 1);
+          else evs[key][idx] = newText;
+          if (!evs[key].length) delete evs[key];
           saveCal(evs);
           renderCal();
         });
         cell.querySelector('.events').appendChild(ev);
       });
-      // Double-click to add single event
+      // Double-click add
       cell.addEventListener('dblclick', () => {
         const txt = prompt(`일정 추가: ${key}`);
         if (!txt) return;
@@ -163,8 +155,8 @@ document.addEventListener('DOMContentLoaded', () => {
         saveCal(evs);
         renderCal();
       });
-      // Drag selection for highlighter
-      cell.addEventListener('mousedown', (e) => {
+      // Drag for highlight
+      cell.addEventListener('mousedown', () => {
         if (!isHighlightMode || cell.classList.contains('inactive')) return;
         dragStartCell = cell;
         clearSelection();
@@ -195,41 +187,32 @@ document.addEventListener('DOMContentLoaded', () => {
     monthYear.textContent = `${cy}년 ${cm+1}월`;
   }
 
-  // Highlight mode toggle
   highlightToggle.addEventListener('click', () => {
     isHighlightMode = !isHighlightMode;
     highlightToggle.classList.toggle('active', isHighlightMode);
   });
 
-  // Utility to clear selection highlights
   function clearSelection() {
     document.querySelectorAll('.day-cell.selected')
       .forEach(c => c.classList.remove('selected'));
   }
-
-  // Utility to select range between two cells
   function selectRange(start, end) {
     clearSelection();
     const cells = Array.from(document.querySelectorAll('.day-cell'))
       .filter(c => !c.classList.contains('inactive'));
-    const startIndex = cells.indexOf(start);
-    const endIndex = cells.indexOf(end);
-    const [from, to] = startIndex < endIndex
-      ? [startIndex, endIndex]
-      : [endIndex, startIndex];
-    cells.slice(from, to+1).forEach(c => c.classList.add('selected'));
+    const si = cells.indexOf(start), ei = cells.indexOf(end);
+    const [from, to] = si < ei ? [si, ei] : [ei, si];
+    cells.slice(from, to + 1).forEach(c => c.classList.add('selected'));
   }
 
-  // Month navigation
-  document.getElementById('prevMonth').addEventListener('click', () => {
+  prevBtn.addEventListener('click', () => {
     cm--; if (cm < 0) { cm = 11; cy--; }
     renderCal();
   });
-  document.getElementById('nextMonth').addEventListener('click', () => {
+  nextBtn.addEventListener('click', () => {
     cm++; if (cm > 11) { cm = 0; cy++; }
     renderCal();
   });
 
-  // Initial render
   renderCal();
 });
