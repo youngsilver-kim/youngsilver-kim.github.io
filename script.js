@@ -40,11 +40,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const filter = document.querySelector('.filters button.active').dataset.filter;
     activeList.innerHTML = '';
     completedList.innerHTML = '';
-    todos.filter(t => {
-      if (filter === 'active') return !t.done;
-      if (filter === 'completed') return t.done;
-      return true;
-    }).filter(t => !search.value || t.text.includes(search.value))
+    todos
+      .filter(t => {
+        if (filter === 'active') return !t.done;
+        if (filter === 'completed') return t.done;
+        return true;
+      })
+      .filter(t => !search.value || t.text.includes(search.value))
       .forEach(t => {
         const item = document.createElement('div');
         item.className = 'task-item';
@@ -87,45 +89,147 @@ document.addEventListener('DOMContentLoaded', () => {
   search.addEventListener('input', renderTodos);
   loadTodos();
 
-  // Calendar
+  // Calendar with edit/delete on events and highlighter selection
   const calGrid = document.getElementById('calendarGrid');
   const monthYear = document.getElementById('monthYear');
   const prevBtn = document.getElementById('prevMonth');
   const nextBtn = document.getElementById('nextMonth');
+  const highlightToggle = document.getElementById('highlightToggle');
   const CAL_KEY = 'calendarEvents';
-  let now = new Date();
-  let cy = now.getFullYear();
-  let cm = now.getMonth();
+  let now = new Date(), cy = now.getFullYear(), cm = now.getMonth();
+  let isHighlightMode = false;
+  let dragStartCell = null;
 
+  // Load & save calendar events
   function loadCal() {
     return JSON.parse(localStorage.getItem(CAL_KEY) || '{}');
   }
-  function saveCal(e) { localStorage.setItem(CAL_KEY, JSON.stringify(e)); }
+  function saveCal(evs) {
+    localStorage.setItem(CAL_KEY, JSON.stringify(evs));
+  }
+
+  // Render calendar grid
   function renderCal() {
     calGrid.innerHTML = '';
     const evs = loadCal();
     ['일','월','화','수','목','금','토'].forEach(d => {
-      const dn = document.createElement('div'); dn.className = 'day-name'; dn.textContent = d; calGrid.appendChild(dn);
+      const dn = document.createElement('div');
+      dn.className = 'day-name';
+      dn.textContent = d;
+      calGrid.appendChild(dn);
     });
     const firstDay = new Date(cy, cm, 1).getDay();
     const lastDate = new Date(cy, cm + 1, 0).getDate();
+    // Empty cells
     for (let i = 0; i < firstDay; i++) {
-      const empty = document.createElement('div'); empty.className = 'day-cell inactive'; calGrid.appendChild(empty);
+      const empty = document.createElement('div');
+      empty.className = 'day-cell inactive';
+      calGrid.appendChild(empty);
     }
+    // Date cells
     for (let d = 1; d <= lastDate; d++) {
-      const cell = document.createElement('div'); cell.className = 'day-cell';
+      const cell = document.createElement('div');
+      cell.className = 'day-cell';
       const key = `${cy}-${String(cm+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      cell.dataset.key = key;
       cell.innerHTML = `<div class="date">${d}</div><div class="events"></div>`;
-      (evs[key]||[]).forEach(txt => { const ev = document.createElement('div'); ev.className = 'event'; ev.textContent = txt; cell.querySelector('.events').appendChild(ev); });
-      cell.addEventListener('click', () => {
+      // Render existing events
+      (evs[key]||[]).forEach((txt, idx) => {
+        const ev = document.createElement('div');
+        ev.className = 'event';
+        ev.textContent = txt;
+        // Click to edit/delete
+        ev.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const newText = prompt('수정: 내용 입력 / 삭제는 공백 입력', ev.textContent);
+          if (newText === null) return;
+          if (newText.trim() === '') {
+            evs[key].splice(idx, 1);
+          } else {
+            evs[key][idx] = newText;
+          }
+          if (evs[key].length === 0) delete evs[key];
+          saveCal(evs);
+          renderCal();
+        });
+        cell.querySelector('.events').appendChild(ev);
+      });
+      // Double-click to add single event
+      cell.addEventListener('dblclick', () => {
         const txt = prompt(`일정 추가: ${key}`);
-        if (!txt) return; evs[key] = evs[key]||[]; evs[key].push(txt); saveCal(evs); renderCal();
+        if (!txt) return;
+        evs[key] = evs[key]||[];
+        evs[key].push(txt);
+        saveCal(evs);
+        renderCal();
+      });
+      // Drag selection for highlighter
+      cell.addEventListener('mousedown', (e) => {
+        if (!isHighlightMode || cell.classList.contains('inactive')) return;
+        dragStartCell = cell;
+        clearSelection();
+        cell.classList.add('selected');
+      });
+      cell.addEventListener('mouseover', () => {
+        if (!isHighlightMode || !dragStartCell) return;
+        selectRange(dragStartCell, cell);
+      });
+      cell.addEventListener('mouseup', () => {
+        if (!isHighlightMode || !dragStartCell) return;
+        const selection = Array.from(document.querySelectorAll('.day-cell.selected'))
+          .map(c => c.dataset.key);
+        const title = prompt('형광펜 일정 제목 입력');
+        if (title) {
+          selection.forEach(k => {
+            evs[k] = evs[k]||[];
+            evs[k].push(title);
+          });
+          saveCal(evs);
+        }
+        clearSelection();
+        renderCal();
+        dragStartCell = null;
       });
       calGrid.appendChild(cell);
     }
     monthYear.textContent = `${cy}년 ${cm+1}월`;
   }
-  prevBtn.addEventListener('click', () => { cm--; if (cm<0){cm=11;cy--;} renderCal(); });
-  nextBtn.addEventListener('click', () => { cm++; if(cm>11){cm=0;cy++;} renderCal(); });
+
+  // Highlight mode toggle
+  highlightToggle.addEventListener('click', () => {
+    isHighlightMode = !isHighlightMode;
+    highlightToggle.classList.toggle('active', isHighlightMode);
+  });
+
+  // Utility to clear selection highlights
+  function clearSelection() {
+    document.querySelectorAll('.day-cell.selected')
+      .forEach(c => c.classList.remove('selected'));
+  }
+
+  // Utility to select range between two cells
+  function selectRange(start, end) {
+    clearSelection();
+    const cells = Array.from(document.querySelectorAll('.day-cell'))
+      .filter(c => !c.classList.contains('inactive'));
+    const startIndex = cells.indexOf(start);
+    const endIndex = cells.indexOf(end);
+    const [from, to] = startIndex < endIndex
+      ? [startIndex, endIndex]
+      : [endIndex, startIndex];
+    cells.slice(from, to+1).forEach(c => c.classList.add('selected'));
+  }
+
+  // Month navigation
+  document.getElementById('prevMonth').addEventListener('click', () => {
+    cm--; if (cm < 0) { cm = 11; cy--; }
+    renderCal();
+  });
+  document.getElementById('nextMonth').addEventListener('click', () => {
+    cm++; if (cm > 11) { cm = 0; cy++; }
+    renderCal();
+  });
+
+  // Initial render
   renderCal();
 });
