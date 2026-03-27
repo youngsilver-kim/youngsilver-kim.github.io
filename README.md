@@ -124,8 +124,7 @@ It focuses on combining essential scheduling features into a simple and accessib
 You can add screenshots here later.
 
 ```markdown
-![Main Screen](./assets/screenshot-main.png)
-![Dark Mode](./assets/screenshot-dark.png)
+![Light Mode](assets/lightmode.png)
 ```
 
 ## License
