@@ -120,9 +120,10 @@ It focuses on combining essential scheduling features into a simple and accessib
 * Sync with external calendar services
 
 ## Screenshots
-
-![Light Mode](assets/lightmode.png)
-
+#Light Mode <br/>
+![Light Mode](assets/lightmode.png)<br/>
+#Dark Mode <br/>
+![Dark Mode](assets/darkmode.png)<br/>
 ## License
 
 This project is for educational and personal portfolio use.
