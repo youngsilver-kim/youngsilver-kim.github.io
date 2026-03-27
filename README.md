@@ -121,15 +121,12 @@ It focuses on combining essential scheduling features into a simple and accessib
 
 ## Screenshots
 
-You can add screenshots here later.
 
 ```markdown
-![Light Mode](assets/lightmode.png)
+![Light Mode](./assets/lightmode.png)
 ```
 
 ## License
 
 This project is for educational and personal portfolio use.
 
-
-```
