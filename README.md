@@ -121,10 +121,7 @@ It focuses on combining essential scheduling features into a simple and accessib
 
 ## Screenshots
 
-
-```markdown
 ![Light Mode]("assets/lightmode.png")
-```
 
 ## License
 
